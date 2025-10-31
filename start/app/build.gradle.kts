@@ -71,5 +71,9 @@ dependencies {
 apollo {
     service("service") {
         packageName.set("com.example.rocketreserver")
+        introspection {
+            endpointUrl.set("https://apollo-fullstack-tutorial.herokuapp.com/graphql")
+            schemaFile.set(file("src/main/graphql/schema.graphqls"))
+        }
     }
 }
