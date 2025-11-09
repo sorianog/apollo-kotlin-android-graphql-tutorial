@@ -1,6 +1,6 @@
 package com.example.rocketreserver
 
-import android.R.attr.data
+import android.R.attr.contentDescription
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,24 +27,41 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.apollographql.apollo.api.ApolloResponse
+import com.example.rocketreserver.LaunchDetailsState.Loading
+import com.example.rocketreserver.LaunchDetailsState.Success
+import com.example.rocketreserver.LaunchDetailsState.Error
+
+private sealed interface LaunchDetailsState {
+    object Loading : LaunchDetailsState
+    data class Error(val message: String) : LaunchDetailsState
+    data class Success(val data: LaunchDetailsQuery.Data) : LaunchDetailsState
+}
 
 @Composable
 fun LaunchDetails(launchId: String, navigateToLogin: () -> Unit) {
-    var resp by remember { mutableStateOf<ApolloResponse<LaunchDetailsQuery.Data>?>(null) }
+    var state by remember { mutableStateOf<LaunchDetailsState>(Loading) }
     LaunchedEffect(Unit) {
-        resp = apolloClient.query(LaunchDetailsQuery(launchId)).execute()
+        val resp = apolloClient.query(LaunchDetailsQuery(launchId)).execute()
+        state = when {
+            resp.data != null -> {
+                Success(resp.data!!)
+            }
+            else -> {
+                Error("Oh no... An error happened.")
+            }
+        }
     }
 
-    if (resp == null) {
-        Loading()
-    } else {
-        LaunchDetails(resp!!, navigateToLogin)
+    when (val s = state) {
+        Loading -> Loading()
+        is Error -> ErrorMessage(s.message)
+        is Success -> LaunchDetails(s.data, navigateToLogin)
     }
 }
 
 @Composable
 private fun LaunchDetails(
-    resp: ApolloResponse<LaunchDetailsQuery.Data>,
+    data: LaunchDetailsQuery.Data,
     navigateToLogin: () -> Unit
 ) {
     Column(
@@ -56,7 +73,7 @@ private fun LaunchDetails(
             // Mission patch
             AsyncImage(
                 modifier = Modifier.size(160.dp, 160.dp),
-                model = resp?.data?.launch?.mission?.missionPatch,
+                model = data.launch?.mission?.missionPatch,
                 placeholder = painterResource(R.drawable.ic_placeholder),
                 error = painterResource(R.drawable.ic_placeholder),
                 contentDescription = "Mission Patch"
@@ -68,21 +85,21 @@ private fun LaunchDetails(
                 // Mission name
                 Text(
                     style = MaterialTheme.typography.headlineMedium,
-                    text = resp.data?.launch?.mission?.name ?: "Mission N/A"
+                    text = data.launch?.mission?.name ?: "Mission N/A"
                 )
 
                 // Rocket name
                 Text(
                     modifier = Modifier.padding(top = 8.dp),
                     style = MaterialTheme.typography.headlineSmall,
-                    text = resp.data?.launch?.rocket?.name?.let { "🚀 $it" } ?: "Rocket N/A",
+                    text = data.launch?.rocket?.name?.let { "🚀 $it" } ?: "Rocket N/A",
                 )
 
                 // Site
                 Text(
                     modifier = Modifier.padding(top = 8.dp),
                     style = MaterialTheme.typography.titleMedium,
-                    text = resp.data?.launch?.site ?: "Site N/A"
+                    text = data.launch?.site ?: "Site N/A"
                 )
             }
         }
@@ -94,8 +111,8 @@ private fun LaunchDetails(
                 .fillMaxWidth(),
             onClick = {
                 onBookButtonClick(
-                    launchId = resp.data?.launch?.id ?: "",
-                    isBooked = resp.data?.launch?.isBooked == true,
+                    launchId = data.launch?.id ?: "",
+                    isBooked = data.launch?.isBooked == true,
                     navigateToLogin = navigateToLogin
                 )
             }
