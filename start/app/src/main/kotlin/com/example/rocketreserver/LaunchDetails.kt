@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.apollographql.apollo.api.ApolloResponse
+import com.apollographql.apollo.exception.ApolloNetworkException
 import com.example.rocketreserver.LaunchDetailsState.Loading
 import com.example.rocketreserver.LaunchDetailsState.Success
 import com.example.rocketreserver.LaunchDetailsState.Error
@@ -43,10 +44,21 @@ fun LaunchDetails(launchId: String, navigateToLogin: () -> Unit) {
     LaunchedEffect(Unit) {
         val resp = apolloClient.query(LaunchDetailsQuery(launchId)).execute()
         state = when {
+            resp.errors.orEmpty().isNotEmpty() -> {
+                // GraphQL error
+                Error(resp.errors!!.first().message)
+            }
+            resp.exception is ApolloNetworkException -> {
+                // Network error
+                Error("Please check your network connectivity.")
+            }
             resp.data != null -> {
+                // data (never partial)
                 Success(resp.data!!)
             }
             else -> {
+                // Another fetch error, maybe a cache miss?
+                // Or potentially a non-compliant server returning data: null without an error
                 Error("Oh no... An error happened.")
             }
         }
