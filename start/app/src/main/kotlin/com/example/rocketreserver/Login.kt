@@ -2,6 +2,7 @@
 
 package com.example.rocketreserver
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,15 +20,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import kotlin.math.log
 
 @Composable
-fun Login() {
+fun Login(navigateBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -54,13 +58,27 @@ fun Login() {
         )
 
         // Submit button
+        var loading by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
         Button(
             modifier = Modifier
                 .padding(top = 32.dp)
                 .fillMaxWidth(),
-            onClick = { /*TODO*/ }
+            enabled = !loading,
+            onClick = {
+                loading = true
+                scope.launch {
+                    val canLogin = login(email)
+                    loading = false
+                    if (canLogin) navigateBack()
+                }
+            }
         ) {
-            Text(text = "Submit")
+            if (loading) {
+                Loading()
+            } else {
+                Text(text = "Submit")
+            }
         }
     }
 }
@@ -74,8 +92,35 @@ private fun Loading() {
     )
 }
 
+private suspend fun login(email: String): Boolean {
+    val resp = apolloClient.mutation(LoginMutation(email)).execute()
+    return when {
+        resp.exception != null -> {
+            Log.w("Login", "Failed to login", resp.exception)
+            false
+        }
+
+        resp.hasErrors() -> {
+            Log.w("Login", "Failed to login: ${resp.errors?.get(0)?.message}")
+            false
+        }
+
+        resp.data?.login?.token == null -> {
+            Log.w("Login", "Failed to login: no token returned by the backend")
+            false
+        }
+
+        else -> {
+            val token = resp.data!!.login!!.token!!
+            Log.w("Login", "Setting token: $token")
+            TokenRepository.setToken(token)
+            true
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun LoginPreview() {
-    Login()
+//    Login()
 }
