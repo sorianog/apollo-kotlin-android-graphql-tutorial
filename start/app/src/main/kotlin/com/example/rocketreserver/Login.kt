@@ -122,5 +122,5 @@ private suspend fun login(email: String): Boolean {
 @Preview(showBackground = true)
 @Composable
 private fun LoginPreview() {
-//    Login()
+    Login({})
 }

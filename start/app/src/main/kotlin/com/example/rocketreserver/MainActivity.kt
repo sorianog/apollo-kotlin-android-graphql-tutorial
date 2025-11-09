@@ -9,14 +9,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.apollographql.apollo.api.ApolloResponse
 import com.example.rocketreserver.ui.theme.RocketReserverTheme
 
 class MainActivity : ComponentActivity() {
@@ -25,7 +33,29 @@ class MainActivity : ComponentActivity() {
         TokenRepository.init(this)
         setContent {
             RocketReserverTheme {
-                Scaffold(topBar = { TopAppBar({ Text(stringResource(R.string.app_name)) }) }) { paddingValues ->
+                val tripBookedFlow =
+                    remember { apolloClient.subscription(TripsBookedSubscription()).toFlow() }
+                val tripBookedResp: ApolloResponse<TripsBookedSubscription.Data>? by tripBookedFlow.collectAsState(
+                    null
+                )
+                val snackbarHostState = remember { SnackbarHostState() }
+
+                LaunchedEffect(tripBookedResp) {
+                    if (tripBookedResp == null) return@LaunchedEffect
+                    val msg = when (tripBookedResp!!.data?.tripsBooked) {
+                        null -> "Subscription error"
+                        -1 -> "Trip cancelled"
+                        else -> "Trip booked! 🚀"
+                    }
+                    snackbarHostState.showSnackbar(
+                        message = msg,
+                        duration = SnackbarDuration.Short
+                    )
+                }
+
+                Scaffold(
+                    topBar = { TopAppBar({ Text(stringResource(R.string.app_name)) }) },
+                    snackbarHost = { SnackbarHost(snackbarHostState) }) { paddingValues ->
                     Box(Modifier.padding(paddingValues)) {
                         MainNavHost()
                     }

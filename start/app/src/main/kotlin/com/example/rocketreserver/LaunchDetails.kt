@@ -133,7 +133,7 @@ private fun LaunchDetails(
                 scope.launch {
                     val ok = onBookButtonClick(
                         launchId = data.launch?.id ?: "",
-                        isBooked = data.launch?.isBooked == true,
+                        isBooked = isBooked == true,
                         navigateToLogin = navigateToLogin
                     )
                     if (ok) {
@@ -206,5 +206,5 @@ private suspend fun onBookButtonClick(launchId: String, isBooked: Boolean, navig
 @Preview(showBackground = true)
 @Composable
 private fun LaunchDetailsPreview() {
-//    LaunchDetails(launchId = "42")
+    LaunchDetails(launchId = "42", {})
 }
