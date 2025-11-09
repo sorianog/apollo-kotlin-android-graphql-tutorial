@@ -1,5 +1,6 @@
 package com.example.rocketreserver
 
+import android.R.attr.data
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +29,7 @@ import coil.compose.AsyncImage
 import com.apollographql.apollo.api.ApolloResponse
 
 @Composable
-fun LaunchDetails(launchId: String) {
+fun LaunchDetails(launchId: String, navigateToLogin: () -> Unit) {
     var resp by remember { mutableStateOf<ApolloResponse<LaunchDetailsQuery.Data>?>(null) }
     LaunchedEffect(Unit) {
         resp = apolloClient.query(LaunchDetailsQuery(launchId)).execute()
@@ -37,12 +38,15 @@ fun LaunchDetails(launchId: String) {
     if (resp == null) {
         Loading()
     } else {
-        LaunchDetails(resp!!)
+        LaunchDetails(resp!!, navigateToLogin)
     }
 }
 
 @Composable
-private fun LaunchDetails(resp: ApolloResponse<LaunchDetailsQuery.Data>) {
+private fun LaunchDetails(
+    resp: ApolloResponse<LaunchDetailsQuery.Data>,
+    navigateToLogin: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -64,21 +68,21 @@ private fun LaunchDetails(resp: ApolloResponse<LaunchDetailsQuery.Data>) {
                 // Mission name
                 Text(
                     style = MaterialTheme.typography.headlineMedium,
-                    text = resp?.data?.launch?.mission?.name ?: "Mission N/A"
+                    text = resp.data?.launch?.mission?.name ?: "Mission N/A"
                 )
 
                 // Rocket name
                 Text(
                     modifier = Modifier.padding(top = 8.dp),
                     style = MaterialTheme.typography.headlineSmall,
-                    text = resp?.data?.launch?.rocket?.name?.let { "🚀 $it" } ?: "Rocket N/A",
+                    text = resp.data?.launch?.rocket?.name?.let { "🚀 $it" } ?: "Rocket N/A",
                 )
 
                 // Site
                 Text(
                     modifier = Modifier.padding(top = 8.dp),
                     style = MaterialTheme.typography.titleMedium,
-                    text = resp?.data?.launch?.site ?: "Site N/A"
+                    text = resp.data?.launch?.site ?: "Site N/A"
                 )
             }
         }
@@ -88,7 +92,13 @@ private fun LaunchDetails(resp: ApolloResponse<LaunchDetailsQuery.Data>) {
             modifier = Modifier
                 .padding(top = 32.dp)
                 .fillMaxWidth(),
-            onClick = { /*TODO*/ }
+            onClick = {
+                onBookButtonClick(
+                    launchId = resp.data?.launch?.id ?: "",
+                    isBooked = resp.data?.launch?.isBooked == true,
+                    navigateToLogin = navigateToLogin
+                )
+            }
         ) {
             Text(text = "Book now")
         }
@@ -118,8 +128,22 @@ private fun SmallLoading() {
     )
 }
 
+private fun onBookButtonClick(launchId: String, isBooked: Boolean, navigateToLogin: () -> Unit): Boolean {
+    if (TokenRepository.getToken() == null) {
+        navigateToLogin()
+        return false
+    }
+
+    if (isBooked) {
+        // TODO Cancel booking
+    } else {
+        // TODO Book
+    }
+    return false
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun LaunchDetailsPreview() {
-    LaunchDetails(launchId = "42")
+//    LaunchDetails(launchId = "42")
 }
