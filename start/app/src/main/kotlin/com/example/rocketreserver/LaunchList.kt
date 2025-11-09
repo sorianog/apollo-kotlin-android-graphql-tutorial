@@ -25,17 +25,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.apollographql.apollo.api.ApolloResponse
+import com.apollographql.apollo.api.Optional
 
 @Composable
 fun LaunchList(onLaunchClick: (launchId: String) -> Unit) {
+    var cursor: String? by remember { mutableStateOf(null) }
+    var resp: ApolloResponse<LaunchListQuery.Data>? by remember { mutableStateOf(null) }
     var launchList by remember { mutableStateOf(emptyList<LaunchListQuery.Launch>()) }
-    LaunchedEffect(Unit) {
-        val resp = apolloClient.query(LaunchListQuery()).execute()
-        launchList = resp.data?.launches?.launches?.filterNotNull() ?: emptyList()
+    LaunchedEffect(cursor) {
+        resp = apolloClient.query(LaunchListQuery(Optional.present(cursor))).execute()
+        launchList = launchList  + resp?.data?.launches?.launches?.filterNotNull().orEmpty()
     }
+    // Note: Simplified pagination is implemented, Rec. to use: Jetpack Paging
+    // https://developer.android.com/develop/ui/compose/lists#large-datasets
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(launchList) { launch ->
             LaunchItem(launch, onLaunchClick)
+        }
+        item {
+            if (resp?.data?.launches?.hasMore == true) {
+                LoadingItem()
+                cursor = resp?.data?.launches?.cursor
+            }
         }
     }
 }
