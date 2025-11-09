@@ -181,7 +181,13 @@ private suspend fun onBookButtonClick(launchId: String, isBooked: Boolean, navig
         return false
     }
 
-    val resp = apolloClient.mutation(BookTripMutation(launchId)).execute()
+    val mutation = if (isBooked) {
+        CancelTripMutation(launchId)
+    } else {
+        BookTripMutation(launchId)
+    }
+    val resp = apolloClient.mutation(mutation).execute()
+
     return when {
         resp.exception != null -> {
             Log.w("LaunchDetails", "Failed to book/cancel trip", resp.exception)
